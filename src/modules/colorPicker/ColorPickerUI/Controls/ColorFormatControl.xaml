@@ -1,0 +1,66 @@
+﻿<UserControl x:Class="ColorPicker.Controls.ColorFormatControl"
+             xmlns:local="clr-namespace:ColorPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:p="clr-namespace:ColorPicker.Properties" xmlns:ui="http://schemas.modernwpf.com/2019"
+             mc:Ignorable="d">
+
+    <Border x:Name="MainBorder"
+            Margin="12,16,12,0"
+            Width="348"
+            Height="36"
+            CornerRadius="4"
+            HorizontalAlignment="Stretch"
+            Background="{DynamicResource ColorControlBackgroundBrush}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="64"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="36"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="FormatNameTextBlock"
+                       Opacity="0.6"
+                       Style="{DynamicResource BodyStrongTextBlockStyle}"
+                       Foreground="{DynamicResource PrimaryForegroundBrush}"
+                       Margin="8"
+                       VerticalAlignment="Center"/>
+
+            <TextBox x:Name="ColorTextRepresentationTextBlock"
+                       FontFamily="Consolas"
+                       FontSize="14"
+                       Foreground="{DynamicResource PrimaryForegroundBrush}"
+                       Grid.Column="1"
+                       IsTabStop="False"
+                       Background="Transparent"
+                       BorderThickness="0"
+                       IsReadOnly="True"
+                       VerticalAlignment="Center"
+                       Padding="8"
+                       AutomationProperties.Name="{x:Static p:Resources.Color_Code}"
+                     />
+
+            <Button x:Name="CopyToClipboardButton"
+                    ToolTipService.ToolTip="{x:Static p:Resources.Copy_to_clipboard}"
+                    Background="{DynamicResource ColorControlBackgroundBrush}"
+                    FontSize="16"
+                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                    Foreground="{DynamicResource PrimaryForegroundBrush}"
+                    Opacity="0.6"
+                    Height="36"
+                    Width="36"
+                    Grid.Column="2"
+                    Style="{StaticResource DefaultButtonStyle}"
+                    AutomationProperties.Name="{x:Static p:Resources.Copy_to_clipboard}"
+                    AutomationProperties.HelpText="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type local:Controls.ColorFormatControl}}, Path=SelectedColorCopyHelperText}">
+                <Button.Content>
+                    <TextBlock Text="&#xE8C8;" AutomationProperties.Name="{x:Static p:Resources.Copy_to_clipboard}" />
+                </Button.Content>
+            </Button>
+        </Grid>
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="6" Opacity="0.24" ShadowDepth="1" />
+        </Border.Effect>
+    </Border>
+</UserControl>
