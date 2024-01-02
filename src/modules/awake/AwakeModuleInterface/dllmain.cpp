@@ -13,9 +13,14 @@
 #include <common/utils/resources.h>
 #include <common/utils/os-detect.h>
 #include <common/utils/winapi_error.h>
-
+#include <windows.h>
+#include <cstdlib>
 #include <filesystem>
 #include <set>
+
+#include <ctime>
+#include <thread>
+#include <Pdh.h> // Performance Data Helper
 
 BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD ul_reason_for_call, LPVOID /*lpReserved*/)
 {
@@ -39,6 +44,7 @@ const static wchar_t* MODULE_DESC = L"A module that keeps your computer awake on
 
 class Awake : public PowertoyModuleIface
 {
+
     std::wstring app_name;
     std::wstring app_key;
 
@@ -48,10 +54,61 @@ private:
     HANDLE m_hInvokeEvent;
     PROCESS_INFORMATION p_info;
 
+ 
+    bool shutdown_pc_after_low_cpu = false; // initializing shutdown
+    bool shutdown_triggered = false; // initializing trigger
+    double cpu_threshold = 10.0; // CPU usage threshold in percentage
+    PDH_HQUERY query;
+    PDH_HCOUNTER counter;
+
     bool is_process_running()
     {
         return WaitForSingleObject(p_info.hProcess, 0) == WAIT_TIMEOUT;
     }
+
+
+    //Checking the CPU usage.
+    void initializeCpuUsageCounter()
+    {
+        PdhOpenQuery(nullptr, 0, &query);
+        PdhAddCounter(query, L"\\Processor(_Total)\\% Processor Time", 0, &counter);
+        PdhCollectQueryData(query);
+    }
+
+    double getCurrentCpuUsage()
+    {
+        PDH_FMT_COUNTERVALUE value;
+        PdhCollectQueryData(query);
+        PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, nullptr, &value);
+        return value.doubleValue;
+    }
+
+    void checkCpuUsage()
+    {
+        while (!shutdown_triggered)
+        {
+            double cpuUsage = getCurrentCpuUsage();
+
+            if (cpuUsage < cpu_threshold)
+            {
+                shutdown_triggered = true;
+                scheduleShutdown();
+            }
+
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
+
+
+    void scheduleShutdown() 
+    {
+        //Schedule the PC to shut down in 30 seconds.
+        system("shutdown /s /f /t 30");
+    }
+
+    
+
+
 
     void launch_process()
     {
@@ -73,17 +130,23 @@ private:
             Logger::error(message);
         }
     }
+     
 
 public:
     Awake()
     {
+
         app_name = GET_RESOURCE_STRING(IDS_AWAKE_NAME);
         app_key = AwakeConstants::ModuleKey;
         std::filesystem::path logFilePath(PTSettingsHelper::get_module_save_folder_location(this->app_key));
         logFilePath.append(LogSettings::awakeLogPath);
         Logger::init(LogSettings::launcherLoggerName, logFilePath.wstring(), PTSettingsHelper::get_log_settings_file_location());
         Logger::info("Launcher object is constructing");
+
     };
+
+ 
+
 
     // Return the configured status for the gpo policy for the module
     virtual powertoys_gpo::gpo_rule_configured_t gpo_policy_enabled_configuration() override
@@ -140,11 +203,20 @@ public:
         ResetEvent(send_telemetry_event);
         ResetEvent(m_hInvokeEvent);
         launch_process();
+
+        initializeCpuUsageCounter();
+
+        // Start CPU usage monitoring.
+        std::thread cpuUsageThread(&Awake::checkCpuUsage, this);
+        cpuUsageThread.detach(); // Allow it to run alone
+
         m_enabled = true;
     };
 
     virtual void disable()
     {
+        
+        
         if (m_enabled)
         {
             Trace::EnableAwake(false);
@@ -174,6 +246,8 @@ public:
                 CloseHandle(p_info.hProcess);
             }
         }
+
+   
 
         m_enabled = false;
     }
